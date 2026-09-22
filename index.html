@@ -971,7 +971,7 @@ function readOnlyFalseThenDelayedFocus() {
 
             editor.readOnly = false;
 
-            //editor.focus();
+            editor.focus();
 
             log(
                 "immediately focused = "
@@ -990,7 +990,7 @@ function readOnlyFalseThenDelayedFocus() {
                 function () {
                     log("1000ms later -> readOnly false");
 
-                    editor.focus();
+                    //editor.focus();
                     log(
                         "1000ms later focused = "
                         + (document.activeElement === editor)
