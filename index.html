@@ -301,6 +301,10 @@
         9. Check Focus
     </button>
 
+    <button onclick="readOnlyFalseThenDelayedFocus()"> 
+        10. readonly=false → Focus After 500ms 
+    </button>
+
     <button onclick="clearLog()">
         Clear Log
     </button>
@@ -947,6 +951,62 @@ function clearLog() {
     updateStatus();
 }
 
+function readOnlyFalseThenDelayedFocus() {
+
+    log("");
+    log("===== readonly=false → Focus After 500ms =====");
+
+    editor.readOnly = false;
+
+
+    log("readonly = false");
+
+    updateStatus();
+
+
+    setTimeout(
+        function () {
+
+            log("500ms later -> editor.focus()");
+
+            editor.focus();
+
+            log(
+                "immediately focused = "
+                + (document.activeElement === editor)
+            );
+
+            log(
+                "activeElement = "
+                + getActiveElementName()
+            );
+
+            updateStatus();
+
+
+            setTimeout(
+                function () {
+
+                    log(
+                        "100ms later focused = "
+                        + (document.activeElement === editor)
+                    );
+
+                    log(
+                        "100ms activeElement = "
+                        + getActiveElementName()
+                    );
+
+                    updateStatus();
+
+                },
+                100
+            );
+
+        },
+        500
+    );
+}
 
 attachEvents();
 
