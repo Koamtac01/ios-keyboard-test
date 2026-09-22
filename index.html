@@ -10,7 +10,7 @@
                    maximum-scale=1.0,
                    user-scalable=no">
 
-    <title>iOS Editor / Keyboard Test</title>
+    <title>iOS Keyboard / Suggestion Test</title>
 
     <style>
         body {
@@ -21,10 +21,6 @@
 
         h2 {
             margin-top: 0;
-        }
-
-        #editorContainer {
-            margin-bottom: 16px;
         }
 
         .editor {
@@ -58,10 +54,26 @@
             font-size: 17px;
         }
 
+        select {
+            width: 100%;
+            box-sizing: border-box;
+
+            padding: 10px;
+            margin-top: 6px;
+
+            font-size: 17px;
+        }
+
         .section {
             margin-top: 22px;
-            padding-top: 12px;
+            padding-top: 14px;
+
             border-top: 1px solid #ccc;
+        }
+
+        .label {
+            margin-top: 10px;
+            font-weight: bold;
         }
 
         #status {
@@ -75,10 +87,23 @@
             font-weight: bold;
         }
 
+        #attributes {
+            margin-top: 10px;
+            padding: 10px;
+
+            background-color: #f5f5f5;
+
+            border: 1px solid #aaa;
+            border-radius: 8px;
+
+            font-family: monospace;
+            font-size: 13px;
+        }
+
         #log {
             margin-top: 16px;
 
-            height: 360px;
+            height: 380px;
             overflow-y: auto;
 
             padding: 10px;
@@ -99,22 +124,132 @@
 
 <body>
 
-<h2>iOS Editor / Custom Keyboard Test</h2>
+<h2>iOS Keyboard / Suggestion Test</h2>
 
 
-<div id="editorContainer">
-
-    <input id="editor"
-           class="editor"
-           type="text"
-           autocomplete="off"
-           placeholder="Tap here">
-
-</div>
+<input id="editor"
+       class="editor"
+       type="text"
+       placeholder="Tap here">
 
 
 <div id="status">
     Focused: false
+</div>
+
+
+<div id="attributes"></div>
+
+
+<div class="section">
+
+    <div class="label">
+        autocomplete
+    </div>
+
+    <select id="autocompleteSelect"
+            onchange="applySettings()">
+
+        <option value="on">
+            on
+        </option>
+
+        <option value="off">
+            off
+        </option>
+
+        <option value="name">
+            name
+        </option>
+
+        <option value="email">
+            email
+        </option>
+
+        <option value="username">
+            username
+        </option>
+
+        <option value="one-time-code">
+            one-time-code
+        </option>
+
+    </select>
+
+
+    <div class="label">
+        autocorrect
+    </div>
+
+    <select id="autocorrectSelect"
+            onchange="applySettings()">
+
+        <option value="on">
+            on
+        </option>
+
+        <option value="off">
+            off
+        </option>
+
+    </select>
+
+
+    <div class="label">
+        spellcheck
+    </div>
+
+    <select id="spellcheckSelect"
+            onchange="applySettings()">
+
+        <option value="true">
+            true
+        </option>
+
+        <option value="false">
+            false
+        </option>
+
+    </select>
+
+
+    <div class="label">
+        inputmode
+    </div>
+
+    <select id="inputmodeSelect"
+            onchange="applySettings()">
+
+        <option value="text">
+            text
+        </option>
+
+        <option value="none">
+            none
+        </option>
+
+        <option value="numeric">
+            numeric
+        </option>
+
+        <option value="decimal">
+            decimal
+        </option>
+
+        <option value="tel">
+            tel
+        </option>
+
+        <option value="email">
+            email
+        </option>
+
+        <option value="url">
+            url
+        </option>
+
+    </select>
+
 </div>
 
 
@@ -137,16 +272,16 @@
 
 <div class="section">
 
-    <button onclick="simulateBarcodeInput()">
+    <button onclick="simulateBarcode()">
         4. Simulate Barcode Input
     </button>
 
-    <button onclick="simulateBarcodeThenDelayedFocus()">
+    <button onclick="barcodeBlurFocus()">
         5. Barcode → Blur → Focus After 1 Sec
     </button>
 
-    <button onclick="simulateBarcodeThenRecreateEditor()">
-        6. Barcode → Recreate Editor → Focus
+    <button onclick="recreateEditorAndFocus()">
+        6. Recreate Editor → Focus
     </button>
 
 </div>
@@ -154,12 +289,16 @@
 
 <div class="section">
 
-    <button onclick="recreateEditorOnly()">
-        7. Recreate Editor Only
+    <button onclick="setInputModeNoneThenText()">
+        7. inputmode=none → text → Focus
+    </button>
+
+    <button onclick="toggleReadOnlyAndFocus()">
+        8. readonly ON/OFF → Focus
     </button>
 
     <button onclick="checkFocus()">
-        8. Check Focus
+        9. Check Focus
     </button>
 
     <button onclick="clearLog()">
@@ -177,19 +316,15 @@
 let editor =
     document.getElementById("editor");
 
-const editorContainer =
-    document.getElementById("editorContainer");
-
 const statusView =
     document.getElementById("status");
 
 const logView =
     document.getElementById("log");
 
+const attributesView =
+    document.getElementById("attributes");
 
-/* --------------------------------------------------
- * Logging
- * -------------------------------------------------- */
 
 function getTime() {
 
@@ -218,10 +353,6 @@ function log(message) {
 }
 
 
-/* --------------------------------------------------
- * Element information
- * -------------------------------------------------- */
-
 function getElementName(element) {
 
     if (!element) {
@@ -247,11 +378,7 @@ function getActiveElementName() {
 }
 
 
-/* --------------------------------------------------
- * Focus status
- * -------------------------------------------------- */
-
-function updateFocusStatus() {
+function updateStatus() {
 
     const focused =
         document.activeElement === editor;
@@ -262,32 +389,37 @@ function updateFocusStatus() {
         + " | Active: "
         + getActiveElementName();
 
-    if (focused) {
+    statusView.style.backgroundColor =
+        focused
+            ? "#d8ffd8"
+            : "#ffd8d8";
 
-        statusView.style.backgroundColor =
-            "#d8ffd8";
 
-    } else {
-
-        statusView.style.backgroundColor =
-            "#ffd8d8";
-    }
-
-    return focused;
+    attributesView.textContent =
+        "autocomplete = "
+        + editor.getAttribute("autocomplete")
+        + "\n"
+        + "autocorrect = "
+        + editor.getAttribute("autocorrect")
+        + "\n"
+        + "spellcheck = "
+        + editor.spellcheck
+        + "\n"
+        + "inputmode = "
+        + editor.getAttribute("inputmode")
+        + "\n"
+        + "readonly = "
+        + editor.readOnly
+        + "\n"
+        + "disabled = "
+        + editor.disabled
+        + "\n"
+        + "value = "
+        + editor.value;
 }
 
 
-/* --------------------------------------------------
- * Attach events to current editor
- * -------------------------------------------------- */
-
-function attachEditorEvents() {
-
-    log(
-        "Attach events to "
-        + getElementName(editor)
-    );
-
+function attachEvents() {
 
     editor.addEventListener(
         "pointerdown",
@@ -296,8 +428,8 @@ function attachEditorEvents() {
             log("EDITOR POINTER DOWN");
 
             log(
-                "Before focus activeElement = "
-                + getActiveElementName()
+                "before pointer focus = "
+                + (document.activeElement === editor)
             );
         }
     );
@@ -319,16 +451,16 @@ function attachEditorEvents() {
             log("EDITOR CLICK");
 
             log(
-                "CLICK focused = "
+                "click focused = "
                 + (document.activeElement === editor)
             );
 
             log(
-                "CLICK activeElement = "
+                "click activeElement = "
                 + getActiveElementName()
             );
 
-            updateFocusStatus();
+            updateStatus();
         }
     );
 
@@ -340,11 +472,11 @@ function attachEditorEvents() {
             log("EDITOR FOCUS");
 
             log(
-                "FOCUS activeElement = "
+                "focus activeElement = "
                 + getActiveElementName()
             );
 
-            updateFocusStatus();
+            updateStatus();
         }
     );
 
@@ -359,11 +491,11 @@ function attachEditorEvents() {
                 function () {
 
                     log(
-                        "After BLUR activeElement = "
+                        "after blur activeElement = "
                         + getActiveElementName()
                     );
 
-                    updateFocusStatus();
+                    updateStatus();
 
                 },
                 0
@@ -377,16 +509,16 @@ function attachEditorEvents() {
         function () {
 
             log(
-                "EDITOR INPUT value = "
+                "EDITOR INPUT : "
                 + editor.value
             );
 
             log(
-                "INPUT focused = "
+                "input focused = "
                 + (document.activeElement === editor)
             );
 
-            updateFocusStatus();
+            updateStatus();
         }
     );
 
@@ -396,17 +528,13 @@ function attachEditorEvents() {
         function () {
 
             log(
-                "EDITOR CHANGE value = "
+                "EDITOR CHANGE : "
                 + editor.value
             );
         }
     );
 }
 
-
-/* --------------------------------------------------
- * Document level events
- * -------------------------------------------------- */
 
 document.addEventListener(
     "focusin",
@@ -432,82 +560,74 @@ document.addEventListener(
 );
 
 
-document.addEventListener(
-    "pointerdown",
-    function (event) {
+function applySettings() {
 
-        log(
-            "DOCUMENT POINTER DOWN : "
-            + getElementName(event.target)
-        );
-    }
-);
+    const autocomplete =
+        document.getElementById(
+            "autocompleteSelect"
+        ).value;
+
+    const autocorrect =
+        document.getElementById(
+            "autocorrectSelect"
+        ).value;
+
+    const spellcheck =
+        document.getElementById(
+            "spellcheckSelect"
+        ).value;
+
+    const inputmode =
+        document.getElementById(
+            "inputmodeSelect"
+        ).value;
 
 
-/* --------------------------------------------------
- * Test 1
- *
- * User button event -> immediate focus
- * -------------------------------------------------- */
+    editor.setAttribute(
+        "autocomplete",
+        autocomplete
+    );
+
+    editor.setAttribute(
+        "autocorrect",
+        autocorrect
+    );
+
+    editor.spellcheck =
+        spellcheck === "true";
+
+    editor.setAttribute(
+        "inputmode",
+        inputmode
+    );
+
+
+    log("Settings changed");
+
+    updateStatus();
+}
+
 
 function focusDirect() {
 
     log("");
-    log("===== TEST 1 : Focus Directly =====");
+    log("===== Focus Directly =====");
 
     editor.focus();
 
     log(
-        "Immediately focused = "
+        "focused = "
         + (document.activeElement === editor)
     );
 
-    log(
-        "activeElement = "
-        + getActiveElementName()
-    );
-
-    updateFocusStatus();
-
-
-    setTimeout(
-        function () {
-
-            log(
-                "100ms focused = "
-                + (document.activeElement === editor)
-            );
-
-            log(
-                "100ms activeElement = "
-                + getActiveElementName()
-            );
-
-            updateFocusStatus();
-
-        },
-        100
-    );
+    updateStatus();
 }
 
-
-/* --------------------------------------------------
- * Test 2
- *
- * User button
- * -> wait 1 sec
- * -> focus()
- *
- * This is the important iOS programmatic focus test.
- * -------------------------------------------------- */
 
 function focusDelayed() {
 
     log("");
-    log("===== TEST 2 : Focus After 1 Second =====");
-
-    log("Waiting 1 second...");
-
+    log("===== Focus After 1 Second =====");
 
     setTimeout(
         function () {
@@ -516,38 +636,12 @@ function focusDelayed() {
 
             editor.focus();
 
-
             log(
-                "Immediately focused = "
+                "immediately focused = "
                 + (document.activeElement === editor)
             );
 
-            log(
-                "activeElement = "
-                + getActiveElementName()
-            );
-
-            updateFocusStatus();
-
-
-            setTimeout(
-                function () {
-
-                    log(
-                        "100ms focused = "
-                        + (document.activeElement === editor)
-                    );
-
-                    log(
-                        "100ms activeElement = "
-                        + getActiveElementName()
-                    );
-
-                    updateFocusStatus();
-
-                },
-                100
-            );
+            updateStatus();
 
 
             setTimeout(
@@ -558,12 +652,7 @@ function focusDelayed() {
                         + (document.activeElement === editor)
                     );
 
-                    log(
-                        "500ms activeElement = "
-                        + getActiveElementName()
-                    );
-
-                    updateFocusStatus();
+                    updateStatus();
 
                 },
                 500
@@ -575,93 +664,25 @@ function focusDelayed() {
 }
 
 
-/* --------------------------------------------------
- * Test 3
- * -------------------------------------------------- */
-
 function blurEditor() {
 
     log("");
-    log("===== TEST 3 : Blur =====");
+    log("===== Blur =====");
 
     editor.blur();
 
-    log(
-        "After blur activeElement = "
-        + getActiveElementName()
-    );
-
-    updateFocusStatus();
+    updateStatus();
 }
 
 
-/* --------------------------------------------------
- * Test 4
- *
- * Approximate textDocumentProxy.insertText()
- *
- * JavaScript cannot actually invoke
- * textDocumentProxy.
- *
- * This manually changes value and fires
- * an input event so we can test web-side behavior.
- * -------------------------------------------------- */
-
-function simulateBarcodeInput() {
+function simulateBarcode() {
 
     log("");
-    log("===== TEST 4 : Simulate Barcode =====");
+    log("===== Simulate Barcode =====");
 
 
     editor.value =
-        "123456789";
-
-
-    const event =
-        new Event(
-            "input",
-            {
-                bubbles: true
-            }
-        );
-
-
-    editor.dispatchEvent(event);
-
-
-    log("Barcode simulation finished");
-
-    log(
-        "focused = "
-        + (document.activeElement === editor)
-    );
-
-    updateFocusStatus();
-}
-
-
-/* --------------------------------------------------
- * Test 5
- *
- * Similar to:
- *
- * scanner input
- * -> application processing
- * -> blur
- * -> async callback
- * -> editor.focus()
- *
- * -------------------------------------------------- */
-
-function simulateBarcodeThenDelayedFocus() {
-
-    log("");
-    log("===== TEST 5 =====");
-    log("Barcode -> Blur -> Delayed Focus");
-
-
-    editor.value =
-        "123456789";
+        "ABC123456789";
 
 
     editor.dispatchEvent(
@@ -674,7 +695,30 @@ function simulateBarcodeThenDelayedFocus() {
     );
 
 
-    log("Barcode input finished");
+    log("Barcode simulated");
+
+    updateStatus();
+}
+
+
+function barcodeBlurFocus() {
+
+    log("");
+    log("===== Barcode → Blur → Focus =====");
+
+
+    editor.value =
+        "ABC123456789";
+
+
+    editor.dispatchEvent(
+        new Event(
+            "input",
+            {
+                bubbles: true
+            }
+        )
+    );
 
 
     editor.blur();
@@ -685,45 +729,16 @@ function simulateBarcodeThenDelayedFocus() {
     setTimeout(
         function () {
 
-            log(
-                "1 second later -> editor.focus()"
-            );
-
+            log("Calling focus after 1 sec");
 
             editor.focus();
 
-
             log(
-                "Immediately focused = "
+                "focused = "
                 + (document.activeElement === editor)
             );
 
-            log(
-                "activeElement = "
-                + getActiveElementName()
-            );
-
-            updateFocusStatus();
-
-
-            setTimeout(
-                function () {
-
-                    log(
-                        "500ms later focused = "
-                        + (document.activeElement === editor)
-                    );
-
-                    log(
-                        "500ms activeElement = "
-                        + getActiveElementName()
-                    );
-
-                    updateFocusStatus();
-
-                },
-                500
-            );
+            updateStatus();
 
         },
         1000
@@ -731,140 +746,14 @@ function simulateBarcodeThenDelayedFocus() {
 }
 
 
-/* --------------------------------------------------
- * Test 6
- *
- * Important React/Vue style test.
- *
- * barcode
- * -> blur
- * -> DOM editor destroyed
- * -> new editor created
- * -> programmatic focus
- *
- * -------------------------------------------------- */
-
-function simulateBarcodeThenRecreateEditor() {
+function recreateEditorAndFocus() {
 
     log("");
-    log("===== TEST 6 =====");
-    log(
-        "Barcode -> Blur -> Recreate Editor -> Focus"
-    );
+    log("===== Recreate Editor → Focus =====");
 
-
-    editor.value =
-        "123456789";
-
-
-    editor.dispatchEvent(
-        new Event(
-            "input",
-            {
-                bubbles: true
-            }
-        )
-    );
-
-
-    editor.blur();
-
-    log("Old editor blurred");
-
-
-    setTimeout(
-        function () {
-
-            recreateEditor();
-
-
-            log(
-                "New editor created"
-            );
-
-
-            setTimeout(
-                function () {
-
-                    log(
-                        "Calling focus() on NEW editor"
-                    );
-
-
-                    editor.focus();
-
-
-                    log(
-                        "Immediately focused = "
-                        + (document.activeElement === editor)
-                    );
-
-                    log(
-                        "activeElement = "
-                        + getActiveElementName()
-                    );
-
-                    updateFocusStatus();
-
-
-                    setTimeout(
-                        function () {
-
-                            log(
-                                "500ms later focused = "
-                                + (document.activeElement === editor)
-                            );
-
-                            log(
-                                "500ms activeElement = "
-                                + getActiveElementName()
-                            );
-
-                            updateFocusStatus();
-
-                        },
-                        500
-                    );
-
-                },
-                200
-            );
-
-        },
-        500
-    );
-}
-
-
-/* --------------------------------------------------
- * Test 7
- * -------------------------------------------------- */
-
-function recreateEditorOnly() {
-
-    log("");
-    log("===== TEST 7 : Recreate Editor =====");
-
-    recreateEditor();
-
-    updateFocusStatus();
-}
-
-
-/* --------------------------------------------------
- * Recreate actual DOM INPUT node
- * -------------------------------------------------- */
-
-function recreateEditor() {
 
     const oldValue =
         editor.value;
-
-
-    log(
-        "Removing old editor : "
-        + getElementName(editor)
-    );
 
 
     editor.remove();
@@ -877,29 +766,22 @@ function recreateEditor() {
     newEditor.id =
         "editor";
 
-
     newEditor.className =
         "editor";
-
 
     newEditor.type =
         "text";
 
-
-    newEditor.autocomplete =
-        "off";
-
+    newEditor.value =
+        oldValue;
 
     newEditor.placeholder =
         "NEW editor - tap here";
 
 
-    newEditor.value =
-        oldValue;
-
-
-    editorContainer.appendChild(
-        newEditor
+    document.body.insertBefore(
+        newEditor,
+        statusView
     );
 
 
@@ -907,69 +789,153 @@ function recreateEditor() {
         newEditor;
 
 
-    attachEditorEvents();
+    attachEvents();
+
+    applySettings();
 
 
-    log(
-        "Created new editor : "
-        + getElementName(editor)
+    log("New editor created");
+
+
+    setTimeout(
+        function () {
+
+            log("Calling focus on NEW editor");
+
+            editor.focus();
+
+            log(
+                "focused = "
+                + (document.activeElement === editor)
+            );
+
+            updateStatus();
+
+        },
+        500
     );
 }
 
 
-/* --------------------------------------------------
- * Check current state
- * -------------------------------------------------- */
+function setInputModeNoneThenText() {
+
+    log("");
+    log("===== inputmode none → text =====");
+
+
+    editor.setAttribute(
+        "inputmode",
+        "none"
+    );
+
+
+    log("inputmode = none");
+
+
+    editor.focus();
+
+
+    setTimeout(
+        function () {
+
+            editor.setAttribute(
+                "inputmode",
+                "text"
+            );
+
+
+            log("inputmode = text");
+
+
+            editor.focus();
+
+
+            log(
+                "focused = "
+                + (document.activeElement === editor)
+            );
+
+
+            updateStatus();
+
+        },
+        500
+    );
+}
+
+
+function toggleReadOnlyAndFocus() {
+
+    log("");
+    log("===== readonly toggle =====");
+
+
+    editor.readOnly = true;
+
+    log("readonly = true");
+
+
+    editor.focus();
+
+
+    setTimeout(
+        function () {
+
+            editor.readOnly = false;
+
+            log("readonly = false");
+
+
+            editor.focus();
+
+
+            log(
+                "focused = "
+                + (document.activeElement === editor)
+            );
+
+
+            updateStatus();
+
+        },
+        500
+    );
+}
+
 
 function checkFocus() {
 
     log("");
-    log("===== CHECK FOCUS =====");
-
-
-    log(
-        "editor = "
-        + getElementName(editor)
-    );
-
+    log("===== Check Focus =====");
 
     log(
-        "Focused = "
+        "focused = "
         + (document.activeElement === editor)
     );
-
 
     log(
         "activeElement = "
         + getActiveElementName()
     );
 
-
     log(
-        "editor.isConnected = "
-        + editor.isConnected
-    );
-
-
-    log(
-        "editor.disabled = "
-        + editor.disabled
-    );
-
-
-    log(
-        "editor.readOnly = "
+        "readonly = "
         + editor.readOnly
     );
 
+    log(
+        "disabled = "
+        + editor.disabled
+    );
 
-    updateFocusStatus();
+    log(
+        "inputmode = "
+        + editor.getAttribute("inputmode")
+    );
+
+    updateStatus();
 }
 
-
-/* --------------------------------------------------
- * Clear
- * -------------------------------------------------- */
 
 function clearLog() {
 
@@ -978,20 +944,18 @@ function clearLog() {
 
     log("Log cleared");
 
-    updateFocusStatus();
+    updateStatus();
 }
 
 
-/* --------------------------------------------------
- * Startup
- * -------------------------------------------------- */
-
-attachEditorEvents();
+attachEvents();
 
 
 window.addEventListener(
     "load",
     function () {
+
+        applySettings();
 
         log("Page loaded");
 
@@ -1000,12 +964,7 @@ window.addEventListener(
             + navigator.userAgent
         );
 
-        log(
-            "Initial activeElement = "
-            + getActiveElementName()
-        );
-
-        updateFocusStatus();
+        updateStatus();
     }
 );
 
