@@ -956,10 +956,10 @@ function readOnlyFalseThenDelayedFocus() {
     log("");
     log("===== readonly=false → Focus After 500ms =====");
 
-    editor.readOnly = false;
+    editor.readOnly = true;
 
 
-    log("readonly = false");
+    log("readonly = true");
 
     updateStatus();
 
@@ -968,6 +968,8 @@ function readOnlyFalseThenDelayedFocus() {
         function () {
 
             log("500ms later -> editor.focus()");
+
+            editor.readOnly = false;
 
             editor.focus();
 
@@ -986,21 +988,21 @@ function readOnlyFalseThenDelayedFocus() {
 
             setTimeout(
                 function () {
-
+                    editor.focus();
                     log(
-                        "100ms later focused = "
+                        "500ms later focused = "
                         + (document.activeElement === editor)
                     );
 
                     log(
-                        "100ms activeElement = "
+                        "500ms activeElement = "
                         + getActiveElementName()
                     );
 
                     updateStatus();
 
                 },
-                100
+                500
             );
 
         },
